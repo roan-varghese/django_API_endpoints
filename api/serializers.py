@@ -23,12 +23,12 @@ class WeatherByHourSerializer(ModelSerializer):
 
         fields = (
             'dt',
+            'description',
             'temp', 
             'pressure', 
             'humidity', 
             'wind_speed',
             'visibility',
-            'description',
             'weather_info',
         )
         read_only_fields = ('weather_info',)
@@ -39,11 +39,11 @@ class WeatherByDaySerializer(ModelSerializer):
 
         fields = (
             'dt',
+            'description',
             'temp', 
             'pressure', 
             'humidity', 
             'wind_speed',
-            'description',
             'weather_info',
         )
         read_only_fields = ('weather_info',)
@@ -62,12 +62,12 @@ class WeatherInfoSerializer(ModelSerializer):
             'longitude', 
             'timezone_offset',
             'dt',
+            'description',
             'temp', 
             'pressure', 
             'humidity', 
             'wind_speed',
             'visibility',
-            'description',
             'minutely',
             'hourly',
             'daily',

@@ -19,6 +19,8 @@ class APIOneView(ModelViewSet):
     queryset = WeatherInfo.objects.all()
     serializer_class = WeatherInfoSerializer
 
+    exceptionRaised = False
+
     def format_decimal_places(self, val):
         val = float("{:.2f}".format(val))
         return val
@@ -32,45 +34,50 @@ class APIOneView(ModelViewSet):
 
     def format_data(self, data):
         
-        # Lat & long
-        data['latitude'] = self.format_decimal_places(data['lat'])
-        data['longitude'] = self.format_decimal_places(data['lon'])
+        try:
+            # Lat & long
+            data['latitude'] = self.format_decimal_places(data['lat'])
+            data['longitude'] = self.format_decimal_places(data['lon'])
 
-        # Current Weather
-        current_data = data['current']
-        if current_data is not None:
-            current_data['description'] = current_data['weather'][0]['description'] # description
+            # Current Weather
+            current_data = data['current']
+            if current_data is not None:
+                current_data['description'] = current_data['weather'][0]['description'] # description
 
-        data.update(current_data)
-        data['dt'] = self.convert_to_date(data['dt']) # datetime
+            data.update(current_data)
+            data['dt'] = self.convert_to_date(data['dt']) # datetime
 
-        # Minutes
-        minutely_data = data['minutely']
-        if minutely_data is not None:
-            for min in minutely_data:
-                min['dt'] = self.convert_to_date(min['dt']) # datetime
+            # Minutes
+            minutely_data = data['minutely']
+            if minutely_data is not None:
+                for min in minutely_data:
+                    min['dt'] = self.convert_to_date(min['dt']) # datetime
 
-        # Hours
-        hourly_data = data['hourly']
-        if hourly_data is not None:
-            for hour in hourly_data:
-                hour['dt'] = self.convert_to_date(hour['dt']) # datetime
-                hour['description'] = hour['weather'][0]['description'] # description
+            # Hours
+            hourly_data = data['hourly']
+            if hourly_data is not None:
+                for hour in hourly_data:
+                    hour['dt'] = self.convert_to_date(hour['dt']) # datetime
+                    hour['description'] = hour['weather'][0]['description'] # description
 
-        # Days
-        daily_data = data['daily']
-        if daily_data is not None:
-            for day in daily_data:  
-                day['dt'] = self.convert_to_date(day['dt']) # datetime
-                min = int(day['temp']['min'])
-                max = int(day['temp']['max'])
-                day['temp'] = self.get_avg_temp(min, max) # average temperature
-                day['description'] = day['weather'][0]['description'] # description
+            # Days
+            daily_data = data['daily']
+            if daily_data is not None:
+                for day in daily_data:  
+                    day['dt'] = self.convert_to_date(day['dt']) # datetime
+                    min = int(day['temp']['min'])
+                    max = int(day['temp']['max'])
+                    day['temp'] = self.get_avg_temp(min, max) # average temperature
+                    day['description'] = day['weather'][0]['description'] # description
+            
+        except Exception as e:
+            self.exceptionRaised = e
+            return
 
         return data
     
     # POST requests
-    def post(self, request):
+    def create(self, request):
         
         url = "https://api.openweathermap.org/data/2.5/onecall"
 
@@ -85,6 +92,8 @@ class APIOneView(ModelViewSet):
 
         weather_data = json.loads(response.text)
         weather_data = self.format_data(weather_data)
+        if self.exceptionRaised:
+            return Response({'message': 'Data could not be retrieved', 'error': str(self.exceptionRaised)})
 
         if not WeatherInfo.objects.filter(timezone=weather_data['timezone']).exists():
             serializer = WeatherInfoSerializer(data=weather_data)
@@ -95,9 +104,9 @@ class APIOneView(ModelViewSet):
         if serializer.is_valid():
             serializer.save()
 
-            return Response(serializer.data)
+            return Response(serializer.data, status=201)
             
-        return Response(serializer.errors)
+        return Response(serializer.errors, status=400)
 
 
 # Displays number of items per page
@@ -148,6 +157,9 @@ class APITwoView(ModelViewSet):
             try: qs = qs.filter(precipitation=pr)
             except Exception as e: return Response(e)
 
+        if self.request.query_params.get('count') is None:
+            return Response ({'count': qs.count()})
+
         serializer = WeatherByMinuteSerializer(qs, many=True)
         if serializer.is_valid:
             return Response(serializer.data, status=200)
@@ -166,6 +178,9 @@ class APITwoView(ModelViewSet):
         qs = self.add_filters(qs)
         if self.exceptionRaised:
             return Response({'error': str(self.exceptionRaised)})
+
+        if self.request.query_params.get('count') is None:
+            return Response ({'count': qs.count()})
         
         serializer = WeatherByHourSerializer(qs, many=True)
         if serializer.is_valid:
@@ -186,6 +201,9 @@ class APITwoView(ModelViewSet):
         if self.exceptionRaised:
             return Response({'error': str(self.exceptionRaised)})
         
+        if self.request.query_params.get('count') == "" :
+            return Response ({'count': qs.count()})
+
         serializer = WeatherByDaySerializer(qs, many=True)
         if serializer.is_valid:
             return Response(serializer.data, status=200)
