@@ -1,10 +1,10 @@
 from dotenv import load_dotenv
 import os, csv
-from django.http import JsonResponse, HttpResponse
 import requests, json
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from datetime import datetime
+from django.shortcuts import redirect
+from django.http import HttpResponse
+from rest_framework.response import Response
 
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.pagination import PageNumberPagination
@@ -12,6 +12,11 @@ from rest_framework.decorators import action
 
 from .models import *
 from .serializers import *
+
+# Redirects to /api
+def redirect_view(request):
+    response = redirect('/api/')
+    return response
 
 # Endpoint to trigger weather search on POST
 class APIOneView(ModelViewSet):
@@ -157,7 +162,7 @@ class APITwoView(ModelViewSet):
             try: qs = qs.filter(precipitation=pr)
             except Exception as e: return Response(e)
 
-        if self.request.query_params.get('count') is None:
+        if self.request.query_params.get('count') == "":
             return Response ({'count': qs.count()})
 
         serializer = WeatherByMinuteSerializer(qs, many=True)
@@ -179,7 +184,7 @@ class APITwoView(ModelViewSet):
         if self.exceptionRaised:
             return Response({'error': str(self.exceptionRaised)})
 
-        if self.request.query_params.get('count') is None:
+        if self.request.query_params.get('count') == "":
             return Response ({'count': qs.count()})
         
         serializer = WeatherByHourSerializer(qs, many=True)
@@ -412,10 +417,10 @@ class APITwoView(ModelViewSet):
 
         writer = csv.writer(response)
 
-        writer.writerow(['TIMEZONE', 'LATITUDE', 'LONGITUDE', 'DT', 'TEMP', 'HUMIDITY', 'WIND SPEED', 'VISIBILITY', 'DESCRIPTION'])
+        writer.writerow(['TIMEZONE', 'DT', 'TEMP','HUMIDITY', 'WIND SPEED', 'DESCRIPTION'])
         for record in data:
             writer.writerow([ record['weather_info'], record['dt'], record['temp'], record['humidity'], 
-            record['wind_speed'], record['visibility'], record['description'] ])
+            record['wind_speed'], record['description'] ])
 
         return response
 
@@ -429,7 +434,7 @@ class APITwoView(ModelViewSet):
 
         writer = csv.writer(response)
 
-        writer.writerow(['TIMEZONE', 'LATITUDE', 'LONGITUDE', 'DT', 'AVG_TEMP','HUMIDITY', 'WIND SPEED', 'DESCRIPTION'])
+        writer.writerow(['TIMEZONE', 'DT', 'AVG_TEMP','HUMIDITY', 'WIND SPEED', 'DESCRIPTION'])
         for record in data:
             writer.writerow([ record['weather_info'], record['dt'], record['temp'], record['humidity'], 
             record['wind_speed'], record['description'] ])

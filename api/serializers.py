@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from rest_framework.serializers import Serializer, ModelSerializer, PrimaryKeyRelatedField, Serializer
+from rest_framework.serializers import Serializer, ModelSerializer, Serializer
 from .models import *
 
 class ValidateRequest(Serializer):
